@@ -1,8 +1,18 @@
 __pycache__/
 *.py[cod]
+
+# Local Python environments
 venv/
 venv311/
 .venv/
-data/*.csv
-model.pkl
-confusion_matrix.png
+Backend/venv/
+Backend/venv311/
+
+# Temporary FastAPI starter files
+/app.main.py
+/Backend/app/
+
+# Collected signer data and generated model artifacts
+Backend/data/*.csv
+Backend/model.pkl
+Backend/confusion_matrix.png
