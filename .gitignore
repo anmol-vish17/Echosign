@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+venv/
+venv311/
+.venv/
+data/*.csv
+model.pkl
+confusion_matrix.png
