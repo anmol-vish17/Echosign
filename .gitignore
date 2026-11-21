@@ -222,6 +222,9 @@ __marimo__/
 # Echosign local environments, temporary starter files, and generated data
 /app.main.py
 /Backend/app/
+/Backend/venv/
+/Backend/venv311/
+/Backend/.venv/
 /Backend/data/*.csv
 /Backend/model.pkl
 /Backend/confusion_matrix.png

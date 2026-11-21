@@ -40,6 +40,8 @@ PROJECT_LABELS = (
     "HI",
     "SORRY",
     "TIME",
+    "HURT",
+    "STOP",
     "IDLE",
 )
 EXPECTED_COLUMNS = 127
