@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 
 ROOT = Path(__file__).resolve().parent
-SAMPLES_FILE = ROOT / "data" / "samples.csv"
+SAMPLES_FILE = ROOT / "data" / "final_dataset.csv"
 MODEL_FILE = ROOT / "model.pkl"
 MATRIX_FILE = ROOT / "confusion_matrix.png"
 PROJECT_LABELS = (
@@ -36,6 +36,7 @@ PROJECT_LABELS = (
     "THANK YOU",
     "PLEASE",
     "GOOD",
+    "BAD",    
     "GOOD MORNING",
     "HI",
     "SORRY",
@@ -52,7 +53,7 @@ def main():
         raise SystemExit(f"Sample file not found: {SAMPLES_FILE}")
 
     try:
-        data = pd.read_csv(SAMPLES_FILE, header=None)
+        data = pd.read_csv(SAMPLES_FILE)
     except pd.errors.EmptyDataError:
         raise SystemExit("The sample file is empty. Record sign samples first.")
 
@@ -62,7 +63,7 @@ def main():
             f"but found {data.shape[1]}."
         )
 
-    labels = data.iloc[:, 0].astype(str).str.strip()
+    labels = data.iloc[:, 0].astype(str).str.strip().str.upper()
     extra_labels = sorted(set(labels) - set(PROJECT_LABELS))
     if extra_labels:
         print("Excluding out-of-scope labels from training and testing: " + ", ".join(extra_labels))
@@ -90,12 +91,20 @@ def main():
     x_train, x_test, y_train, y_test = train_test_split(
         feature_values,
         labels,
-        test_size=0.2,
+        test_size=0.15,
         stratify=labels,
         random_state=42,
     )
 
-    model = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+    model = RandomForestClassifier(
+    n_estimators=250,
+    min_samples_leaf=2,
+    class_weight="balanced",
+    random_state=42,
+    n_jobs=-1,
+)
+
+
     model.fit(x_train, y_train)
     predictions = model.predict(x_test)
 
@@ -105,12 +114,14 @@ def main():
     print(f"Accuracy: {accuracy_score(y_test, predictions):.2%}")
     print("Note: a random split can overestimate accuracy; also test on data from a person excluded from training.")
 
+    fig, ax = plt.subplots(figsize=(14, 12))
     ConfusionMatrixDisplay.from_predictions(
         y_test,
         predictions,
         labels=class_labels,
         display_labels=class_labels,
         xticks_rotation=45,
+        ax=ax,
     )
     plt.tight_layout()
     plt.savefig(MATRIX_FILE)
