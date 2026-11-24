@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 import joblib
@@ -17,106 +18,97 @@ import matplotlib.pyplot as plt
 
 
 ROOT = Path(__file__).resolve().parent
-SAMPLES_FILE = ROOT / "data" / "samples.csv"
+CSV_FILES = [
+    ROOT / "data" / "samples.csv",
+    ROOT / "data" / "samples_member2.csv",
+]
 MODEL_FILE = ROOT / "model.pkl"
 MATRIX_FILE = ROOT / "confusion_matrix.png"
-PROJECT_LABELS = (
-    "CASH",
-    "I",
-    "WANT",
-    "NEED",
-    "WATER",
-    "FOOD",
-    "HELP",
-    "MEDICINE",
-    "TOILET",
-    "YES",
-    "NO",
-    "HELLO",
-    "THANK YOU",
-    "PLEASE",
-    "GOOD",
-    "GOOD MORNING",
-    "HI",
-    "SORRY",
-    "TIME",
-    "IDLE",
-)
+
 EXPECTED_COLUMNS = 127
 
 
 def main():
-    if not SAMPLES_FILE.is_file():
-        raise SystemExit(f"Sample file not found: {SAMPLES_FILE}")
+    frames = []
 
-    try:
-        data = pd.read_csv(SAMPLES_FILE, header=None)
-    except pd.errors.EmptyDataError:
-        raise SystemExit("The sample file is empty. Record sign samples first.")
+    for file in CSV_FILES:
+        if file.is_file():
+            frames.append(pd.read_csv(file, header=None))
+            print(f"Loaded: {file.name}")
+
+    if not frames:
+        raise SystemExit("No CSV dataset found.")
+
+    data = pd.concat(frames, ignore_index=True)
 
     if data.shape[1] != EXPECTED_COLUMNS:
         raise SystemExit(
-            f"Expected {EXPECTED_COLUMNS} columns (label + 126 features), "
-            f"but found {data.shape[1]}."
+            f"Expected 127 columns, found {data.shape[1]}."
         )
 
     labels = data.iloc[:, 0].astype(str).str.strip()
-    extra_labels = sorted(set(labels) - set(PROJECT_LABELS))
-    if extra_labels:
-        print("Excluding out-of-scope labels from training and testing: " + ", ".join(extra_labels))
+    features = data.iloc[:, 1:].apply(
+        pd.to_numeric, errors="coerce"
+    )
 
-    project_rows = labels.isin(PROJECT_LABELS)
-    data = data.loc[project_rows].copy()
-    labels = labels.loc[project_rows]
-    class_labels = [label for label in PROJECT_LABELS if label in set(labels)]
-    missing_labels = [label for label in PROJECT_LABELS if label not in class_labels]
-    if missing_labels:
-        raise SystemExit("Missing planned labels: " + ", ".join(missing_labels))
+    if features.isna().any().any():
+        raise SystemExit("Dataset contains invalid feature values.")
+
+    values = features.to_numpy(dtype=float)
+
+    if not np.isfinite(values).all():
+        raise SystemExit("Dataset contains non-finite values.")
 
     counts = labels.value_counts()
-    low_count_labels = [label for label in class_labels if counts[label] < 5]
-    if low_count_labels:
-        raise SystemExit("Need at least 5 samples for: " + ", ".join(low_count_labels))
 
-    features = data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
-    if features.isna().any().any():
-        raise SystemExit("Feature data contains missing or non-numeric values.")
-    feature_values = features.to_numpy(dtype=float)
-    if not np.isfinite(feature_values).all():
-        raise SystemExit("Feature data contains infinite or non-finite values.")
+    if (counts < 5).any():
+        raise SystemExit("Some signs have fewer than 5 samples.")
 
     x_train, x_test, y_train, y_test = train_test_split(
-        feature_values,
+        values,
         labels,
         test_size=0.2,
         stratify=labels,
         random_state=42,
     )
 
-    model = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
+    model = RandomForestClassifier(
+        n_estimators=200,
+        random_state=42,
+        n_jobs=-1,
+    )
+
     model.fit(x_train, y_train)
     predictions = model.predict(x_test)
 
-    print(f"Training on {len(class_labels)} labels: " + ", ".join(class_labels))
-    print("Per-class results from a random 80/20 split:")
-    print(classification_report(y_test, predictions, labels=class_labels, zero_division=0))
-    print(f"Accuracy: {accuracy_score(y_test, predictions):.2%}")
-    print("Note: a random split can overestimate accuracy; also test on data from a person excluded from training.")
+    print("\nTotal samples:", len(data))
+    print("Total signs:", labels.nunique())
+    print("\nSign counts:")
+    print(counts.sort_index().to_string())
+
+    print("\nClassification Report:")
+    print(classification_report(y_test, predictions, zero_division=0))
+
+    print(
+        "Accuracy:",
+        f"{accuracy_score(y_test, predictions):.2%}",
+    )
 
     ConfusionMatrixDisplay.from_predictions(
         y_test,
         predictions,
-        labels=class_labels,
-        display_labels=class_labels,
+        labels=model.classes_,
         xticks_rotation=45,
     )
+
     plt.tight_layout()
     plt.savefig(MATRIX_FILE)
     plt.close()
 
     joblib.dump(model, MODEL_FILE)
-    print(f"Saved model: {MODEL_FILE}")
-    print(f"Saved confusion matrix: {MATRIX_FILE}")
+
+    print("\nModel saved:", MODEL_FILE)
+    print("Confusion matrix saved:", MATRIX_FILE)
 
 
 if __name__ == "__main__":
