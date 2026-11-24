@@ -47,6 +47,8 @@ def predict():
     if model is None:
         return jsonify(error="No trained model found. Run train.py first."), 503
 
+    points[:, :, 0] = 1.0 - points[:, :, 0]
+
     feature_row = np.asarray(build_features(points.tolist()), dtype=float).reshape(1, -1)
     probabilities = model.predict_proba(feature_row)[0]
     best_index = int(np.argmax(probabilities))
@@ -55,7 +57,6 @@ def predict():
         label=str(model.classes_[best_index]),
         confidence=float(probabilities[best_index]),
     )
-
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=False)

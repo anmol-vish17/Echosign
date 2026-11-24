@@ -36,7 +36,7 @@ PROJECT_LABELS = (
     "THANK YOU",
     "PLEASE",
     "GOOD",
-    "BAD",    
+    "BAD",
     "GOOD MORNING",
     "HI",
     "SORRY",
@@ -97,13 +97,12 @@ def main():
     )
 
     model = RandomForestClassifier(
-    n_estimators=250,
-    min_samples_leaf=2,
-    class_weight="balanced",
-    random_state=42,
-    n_jobs=-1,
-)
-
+        n_estimators=250,
+        min_samples_leaf=2,
+        class_weight="balanced",
+        random_state=42,
+        n_jobs=-1,
+    )
 
     model.fit(x_train, y_train)
     predictions = model.predict(x_test)
@@ -127,10 +126,11 @@ def main():
     plt.savefig(MATRIX_FILE)
     plt.close()
 
-    joblib.dump(model, MODEL_FILE)
+    joblib.dump(model, MODEL_FILE, compress=3)
     print(f"Saved model: {MODEL_FILE}")
     print(f"Saved confusion matrix: {MATRIX_FILE}")
 
 
 if __name__ == "__main__":
     main()
+
